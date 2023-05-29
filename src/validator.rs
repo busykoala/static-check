@@ -1,6 +1,15 @@
 use serde_yaml::Value;
 
 
+struct Rule {
+    kind: String,
+    name: String,
+    operator: String,
+    path: String,
+    expected: String,
+}
+
+
 fn iter(values: Vec<Value>, path: Vec<&str>) -> Vec<Value> {
     if path.is_empty() {
         return values;
@@ -29,19 +38,41 @@ fn iter(values: Vec<Value>, path: Vec<&str>) -> Vec<Value> {
 
 
 pub fn validate(resource: Value) {
-    let path = "spec.template.spec.containers.name";
-    let path_vec: Vec<&str> = path.split(".").collect();
-    let kind_vec: Vec<&str> = "kind".split(".").collect();
-    let name_vec: Vec<&str> = "metadata.name".split(".").collect();
+    // example rule
+    let rule = Rule {
+        kind: "Deployment".to_string(),
+        name: "Pod name in Deployment must be nginx".to_string(),
+        operator: "=".to_string(),
+        path: "spec.template.spec.containers.name".to_string(),
+        expected: "nginx".to_string(),
+    };
+    let rules = vec![rule];
 
+    let kind_vec: Vec<&str> = "kind".split(".").collect();
     let kind = iter(vec![resource.clone()], kind_vec);
     let kind_str = kind.get(0).unwrap().as_str().map(String::from).unwrap();
 
+    let name_vec: Vec<&str> = "metadata.name".split(".").collect();
     let name = iter(vec![resource.clone()], name_vec);
     let name_str = name.get(0).unwrap().as_str().map(String::from).unwrap();
 
-    let path = iter(vec![resource.clone()], path_vec);
-
-    println!("------------------------------");
-    println!("{} ({}) has value: {:?}", kind_str, name_str, path);
+    for rule in rules {
+        if rule.kind == kind_str {
+            let rule_path = rule.path.as_str().split(".").collect();
+            let values = iter(vec![resource.clone()], rule_path);
+            for value in values {
+                if rule.operator == "=".to_string() {
+                    let value_str = value.as_str().unwrap();
+                    if value_str != rule.expected {
+                        println!("------------------------------");
+                        println!("RULE VIOLATION: {}", rule.name);
+                        println!("in {} {}", kind_str, name_str);
+                        println!("{} should {} {} but is {}", rule.path, rule.operator, rule.expected, value_str);
+                    }
+                } else {
+                    panic!("Operator not implemented.")
+                }
+            }
+        }
+    }
 }
