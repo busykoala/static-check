@@ -1,0 +1,5 @@
+name: static-check
+usage: "helm static-check"
+description: "check rules"
+command: "$HELM_PLUGIN_DIR/target/release/static-check"
+ignoreFlags: true
